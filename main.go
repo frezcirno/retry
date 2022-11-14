@@ -21,7 +21,6 @@ var version = "development"
 // cmdFlags represents the assorted command line flags that can be passed.
 type cmdFlags struct {
 	retry.Spec
-	quiet   bool
 	version bool
 }
 
@@ -34,7 +33,7 @@ func main() {
 	flag.BoolVar(&flags.Invert, "invert", false, "wait for task to fail rather than succeed")
 	flag.DurationVar(&flags.Jitter, "jitter", 0, "time range randomly added to sleep")
 	flag.DurationVar(&flags.TotalTime, "max-time", 0, "maximum total time to run tasks (0 = unlimited)")
-	flag.BoolVar(&flags.quiet, "quiet", false, "silence all output")
+	flag.BoolVar(&flags.Quiet, "quiet", false, "silence all output")
 	flag.DurationVar(&flags.Sleep, "sleep", 5*time.Second, "time to sleep between attempts")
 	flag.DurationVar(&flags.TaskTime, "task-time", 0, "maximum time for a single attempt to take (0 = unlimited)")
 	flag.BoolVar(&flags.version, "version", false, fmt.Sprintf("print the version %q and exit", version))
@@ -42,7 +41,7 @@ func main() {
 	flag.Parse()
 
 	if err := mainCmd(flags); err != nil {
-		if !flags.quiet {
+		if !flags.Quiet {
 			fmt.Fprintf(os.Stderr, "retry: %v\n", err)
 		}
 		os.Exit(1)
@@ -74,7 +73,7 @@ func mainCmd(flags cmdFlags) error {
 		task = retry.HTTPTask{URL: command}
 	} else {
 		// Otherwise, assume the command references a (shell) command.
-		task = retry.ExecTask{Name: command, Args: args, Quiet: flags.quiet}
+		task = retry.ExecTask{Name: command, Args: args, Quiet: flags.Quiet}
 	}
 
 	return retry.Retry(flags.Spec, task)

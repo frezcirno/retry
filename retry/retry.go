@@ -7,8 +7,12 @@ package retry
 import (
 	"context"
 	"errors"
+	"fmt"
 	"math/rand"
+	"os"
+	"syscall"
 	"time"
+	"unsafe"
 )
 
 var (
@@ -58,6 +62,10 @@ type Spec struct {
 	// TotalTime is the maximum time that all combined task invocations are
 	// allowed to take.
 	TotalTime time.Duration
+
+	// Quiet is used to indicate that no output should be written
+	// to stderr.
+	Quiet bool
 }
 
 // Retry will repeatedly run the given task, until it is successful. The given
@@ -80,11 +88,17 @@ func Retry(spec Spec, task Task) error {
 	for {
 		ctxMaxTask, _ := maybeTimed(ctxMaxTime, spec.TaskTime)
 
+		// Set process name to reflect the current runs.
+		err := SetProcessName(fmt.Sprintf("retry@%d", totalRuns+1))
+		if err != nil && !spec.Quiet {
+			fmt.Fprintf(os.Stderr, "failed to set process name: %v", err)
+		}
+
 		select {
 		case <-ctxMaxTime.Done():
 			return ErrExceededTime
 		case err := <-runnerChan(ctxMaxTask, task):
-			if err != nil != spec.Invert {
+			if (err != nil) != spec.Invert {
 				// Task failed, so drop the number of consecutive successful
 				// runs back down to zero.
 				consecutive = 0
@@ -109,6 +123,10 @@ func Retry(spec Spec, task Task) error {
 
 			// Sleep for the specified duration.
 			snooze := spec.Sleep*time.Duration(multiplier) + jitter(spec.Jitter)
+			if !spec.Quiet {
+				fmt.Fprintf(os.Stderr, "Task failed, will retry in %v\n", snooze)
+			}
+
 			if err := contextSleep(ctxMaxTime, snooze); err != nil {
 				return ErrExceededTime
 			}
@@ -137,7 +155,7 @@ func maybeTimed(parent context.Context, timeout time.Duration) (context.Context,
 }
 
 // jitter returns a random duration in the range of:
-//   [0, variance)
+// [0, variance)
 func jitter(variance time.Duration) time.Duration {
 	if variance <= 0 {
 		return 0
@@ -182,4 +200,13 @@ func runnerChan(ctx context.Context, task Task) <-chan error {
 		errch <- task.Run(ctx)
 	}()
 	return errch
+}
+
+func SetProcessName(name string) error {
+	bytes := append([]byte(name), 0)
+	ptr := unsafe.Pointer(&bytes[0])
+	if _, _, errno := syscall.RawSyscall6(syscall.SYS_PRCTL, syscall.PR_SET_NAME, uintptr(ptr), 0, 0, 0, 0); errno != 0 {
+		return syscall.Errno(errno)
+	}
+	return nil
 }
