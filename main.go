@@ -5,7 +5,6 @@
 package main
 
 import (
-	"errors"
 	"flag"
 	"fmt"
 	"os"
@@ -59,7 +58,8 @@ func mainCmd(flags cmdFlags) error {
 
 	// If no arguments were given, there's nothing to do.
 	if flag.NArg() == 0 {
-		return errors.New("no command given")
+		usage()
+		return nil
 	}
 
 	var (
