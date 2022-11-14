@@ -27,16 +27,16 @@ type cmdFlags struct {
 
 func main() {
 	var flags cmdFlags
-	flag.IntVar(&flags.Attempts, "attempts", 3, "maximum number of attempts")
+	flag.IntVar(&flags.Attempts, "attempts", 999, "maximum number of attempts (0 = unlimited)")
 	flag.BoolVar(&flags.Backoff, "backoff", false, "use exponential backoff when sleeping")
-	flag.IntVar(&flags.Consecutive, "consecutive", 0, "required number of back to back successes")
+	flag.IntVar(&flags.Consecutive, "consecutive", 1, "required number of back to back successes")
 	flag.DurationVar(&flags.InitialDelay, "delay", 0, "initial delay period before tasks are run")
 	flag.BoolVar(&flags.Invert, "invert", false, "wait for task to fail rather than succeed")
 	flag.DurationVar(&flags.Jitter, "jitter", 0, "time range randomly added to sleep")
-	flag.DurationVar(&flags.TotalTime, "max-time", time.Minute, "maximum total time")
+	flag.DurationVar(&flags.TotalTime, "max-time", 0, "maximum total time to run tasks (0 = unlimited)")
 	flag.BoolVar(&flags.quiet, "quiet", false, "silence all output")
 	flag.DurationVar(&flags.Sleep, "sleep", 5*time.Second, "time to sleep between attempts")
-	flag.DurationVar(&flags.TaskTime, "task-time", 0, "maximum time for a single attempt")
+	flag.DurationVar(&flags.TaskTime, "task-time", 0, "maximum time for a single attempt to take (0 = unlimited)")
 	flag.BoolVar(&flags.version, "version", false, fmt.Sprintf("print the version %q and exit", version))
 	flag.Usage = usage
 	flag.Parse()
